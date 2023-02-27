@@ -27,22 +27,25 @@ def schema():
     print_info(json.dumps(manifest_json_schema(), indent=2))
 
 
-MANIFEST_COMPONENT_NAME_OPTION = [click.option('--component', default='main', help='Component name in the project')]
+MANIFEST_OPTION = [
+    click.option('--component', default='main', help='Component name in the project'),
+    click.option('-p', '--path', default=None, help='Path of the component. Component name is ignored when path is specified.')    
+]
 
 
 @manifest.command()
-@add_options(PROJECT_DIR_OPTION + MANIFEST_COMPONENT_NAME_OPTION)
-def create(manager, component):
+@add_options(PROJECT_DIR_OPTION + MANIFEST_OPTION)
+def create(manager, component, path):
     """
     Create manifest file for the specified component.
     """
-    manager.create_manifest(component=component)
+    manager.create_manifest(component=component, path=path)
 
 
 @manifest.command()
-@add_options(PROJECT_DIR_OPTION + MANIFEST_COMPONENT_NAME_OPTION)
+@add_options(PROJECT_DIR_OPTION + MANIFEST_OPTION)
 @click.argument('dependency', required=True)
-def add_dependency(manager, component, dependency):
+def add_dependency(manager, component, path, dependency):
     """
     Add dependency to the manifest file. For now we only support adding dependencies from the component registry.
 
@@ -53,4 +56,4 @@ def add_dependency(manager, component, dependency):
     - $ compote manifest add-dependency example/cmp<=2.0.0
       would add component `example/cmp` with constraint `<=2.0.0`
     """
-    manager.add_dependency(dependency, component=component)
+    manager.add_dependency(dependency, component=component, path=path)

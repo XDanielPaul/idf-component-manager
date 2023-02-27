@@ -102,15 +102,28 @@ class ComponentManager(object):
 
         self.interface_version = interface_version
 
-    def _get_manifest(self, component='main'):  # type: (str) -> Tuple[str, bool]
-        base_dir = self.path if component == 'main' else self.components_path
-        manifest_dir = os.path.join(base_dir, component)
-
+    def _check_manifest_dir(self, manifest_dir): # type: (str) -> None
         if not os.path.isdir(manifest_dir):
             raise FatalError(
                 'Directory "{}" does not exist! '
                 'Please specify a valid component under {}'.format(manifest_dir, self.path))
+        if not manifest_dir.startswith(self.path):
+            raise FatalError(
+                'Directory "{}" is not under project directory! '
+                'Please specify a valid component under {}'.format(manifest_dir, self.path))
 
+    def _get_manifest_dir(self, component='main', path=None):  # type: (str, str | None) -> str
+        base_dir = self.path if component == 'main' else self.components_path
+        return os.path.abspath(path) if path else os.path.join(base_dir, component)
+
+    def _get_manifest(self, component='main', path=None):  # type: (str, str | None) -> Tuple[str, bool]
+
+        if component != 'main' and path is not None:
+            raise FatalError('Cannot determine manifest directory. Please specify either component or path.')
+
+        manifest_dir = self._get_manifest_dir(component=component, path=path)
+        self._check_manifest_dir(manifest_dir)
+        
         manifest_filepath = os.path.join(manifest_dir, MANIFEST_FILENAME)
         created = False
         # Create manifest file if it doesn't exist in work directory
@@ -124,8 +137,8 @@ class ComponentManager(object):
         return manifest_filepath, created
 
     @general_error_handler
-    def create_manifest(self, component='main'):  # type: (str) -> None
-        manifest_filepath, created = self._get_manifest(component)
+    def create_manifest(self, component='main', path=None):  # type: (str, str | None) -> None
+        manifest_filepath, created = self._get_manifest(component=component, path=path)
         if not created:
             print_info('"{}" already exists, skipping...'.format(manifest_filepath))
 
@@ -169,8 +182,11 @@ class ComponentManager(object):
         print_info('Example "{}" successfully downloaded to {}'.format(example_name, os.path.abspath(project_path)))
 
     @general_error_handler
-    def add_dependency(self, dependency, component='main'):  # type: (str, str) -> None
-        manifest_filepath, _ = self._get_manifest(component)
+    def add_dependency(self, dependency, component='main', path=None):  # type: (str, str, str | None) -> None
+        manifest_filepath, _ = self._get_manifest(component=component, path=path)
+        if path:
+            component_path = os.path.abspath(path)
+            component = os.path.basename(component_path)
 
         match = re.match(WEB_DEPENDENCY_REGEX, dependency)
         if match:

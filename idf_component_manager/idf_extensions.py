@@ -111,7 +111,13 @@ def action_extensions(base_actions, project_path):
                         'required': True,
                     },
                 ],
-                'options': LOCAL_MANIFEST_OPTIONS,
+                'options': LOCAL_MANIFEST_OPTIONS + [
+                    {
+                        'names': ['-p','--path'],
+                        'help': 'Path of the component. Component name is ignored when path is specified.',
+                        'default': None
+                    }
+                ],
             },
             'remove_managed_components': {
                 'callback': callback,
