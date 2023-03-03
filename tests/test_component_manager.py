@@ -33,26 +33,12 @@ def test_init_project():
     try:
         os.makedirs(os.path.join(tempdir, 'main'))
         os.makedirs(os.path.join(tempdir, 'components', 'foo'))
-        os.makedirs(os.path.join(tempdir, 'src'))
         main_manifest_path = os.path.join(tempdir, 'main', MANIFEST_FILENAME)
         foo_manifest_path = os.path.join(tempdir, 'components', 'foo', MANIFEST_FILENAME)
-        src_path = os.path.join(tempdir, 'src')
-        src_manifest_path = os.path.join(src_path, MANIFEST_FILENAME)
-
-        outside_project_path = str(Path(tempdir).parent)
-        outside_project_path_error_match = 'Directory ".*" is not under project directory!'
-        component_and_path_error_match = 'Cannot determine manifest directory.'
 
         manager = ComponentManager(path=tempdir)
         manager.create_manifest()
         manager.create_manifest(component='foo')
-        manager.create_manifest(path=src_path)
-
-        with pytest.raises(FatalError, match=outside_project_path_error_match):
-            manager.create_manifest(path=outside_project_path)
-
-        with pytest.raises(FatalError, match=component_and_path_error_match):
-            manager.create_manifest(component='src', path=src_path)
 
         for filepath in [main_manifest_path, foo_manifest_path]:
             with open(filepath, mode='r') as file:
@@ -66,8 +52,32 @@ def test_init_project():
         manifest_manager = ManifestManager(foo_manifest_path, 'foo')
         assert manifest_manager.manifest_tree['dependencies']['idf/comp'] == '<=1.0.0'
 
+    finally:
+        shutil.rmtree(tempdir)
+
+def test_init_project_with_path():
+    tempdir = tempfile.mkdtemp()
+    try:
+        os.makedirs(os.path.join(tempdir, 'src'))
+        src_path = os.path.join(tempdir, 'src')
+        src_manifest_path = os.path.join(src_path, MANIFEST_FILENAME)
+
+        outside_project_path = str(Path(tempdir).parent)
+        outside_project_path_error_match = 'Directory ".*" is not under project directory!'
+        component_and_path_error_match = 'Cannot determine manifest directory.'
+
+        manager = ComponentManager(path=tempdir)
+        manager.create_manifest(path=src_path)
+
+        with pytest.raises(FatalError, match=outside_project_path_error_match):
+            manager.create_manifest(path=outside_project_path)
+
+        with pytest.raises(FatalError, match=component_and_path_error_match):
+            manager.create_manifest(component='src', path=src_path)
+
         manager.add_dependency('idf/comp<=1.0.0', path=src_path)
         manifest_manager = ManifestManager(src_manifest_path, 'src')
+        
         assert manifest_manager.manifest_tree['dependencies']['idf/comp'] == '<=1.0.0'
 
         with pytest.raises(FatalError, match=outside_project_path_error_match):
@@ -76,9 +86,9 @@ def test_init_project():
         with pytest.raises(FatalError, match=component_and_path_error_match):
             manager.add_dependency('idf/comp<=1.0.0', component='src', path=src_path)
 
+
     finally:
         shutil.rmtree(tempdir)
-
 
 @vcr.use_cassette('tests/fixtures/vcr_cassettes/test_upload_component.yaml')
 def test_upload_component(mock_registry, pre_release_component_path):

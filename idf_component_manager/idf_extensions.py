@@ -98,7 +98,13 @@ def action_extensions(base_actions, project_path):
             'create-manifest': {
                 'callback': callback,
                 'help': 'Create manifest for specified component.',
-                'options': LOCAL_MANIFEST_OPTIONS,
+                'options': LOCAL_MANIFEST_OPTIONS + [
+                    {
+                        'names': ['-p','--path'],
+                        'help': 'Path of the component. Component name is ignored when path is specified.',
+                        'default': None
+                    }
+                ],
             },
             'add-dependency': {
                 'callback': callback,

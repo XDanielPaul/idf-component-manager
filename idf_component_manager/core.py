@@ -100,9 +100,14 @@ class ComponentManager(object):
         # Dist directory
         self.dist_path = os.path.join(self.path, 'dist')
 
-        self.interface_version = interface_version
+        self.interface_version = interface_version        
 
-    def _check_manifest_dir(self, manifest_dir): # type: (str) -> None
+    def _get_manifest_dir(self, component='main', path=None):  # type: (str, str | None) -> str
+        if component != 'main' and path is not None:
+            raise FatalError('Cannot determine manifest directory. Please specify either component or path.')
+        base_dir = self.path if component == 'main' else self.components_path
+        manifest_dir = os.path.abspath(path) if path else os.path.join(base_dir, component)
+
         if not os.path.isdir(manifest_dir):
             raise FatalError(
                 'Directory "{}" does not exist! '
@@ -111,30 +116,25 @@ class ComponentManager(object):
             raise FatalError(
                 'Directory "{}" is not under project directory! '
                 'Please specify a valid component under {}'.format(manifest_dir, self.path))
+        
+        return manifest_dir
 
-    def _get_manifest_dir(self, component='main', path=None):  # type: (str, str | None) -> str
-        base_dir = self.path if component == 'main' else self.components_path
-        return os.path.abspath(path) if path else os.path.join(base_dir, component)
+    def _create_manifest_if_missing(self, manifest_filepath): # type: (str) -> bool
+        if os.path.exists(manifest_filepath):
+            return False
+        example_path = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), 'templates', 'idf_component_template.yml')
+        create_directory(manifest_filepath)
+        shutil.copyfile(example_path, manifest_filepath)
+        print_info('Created "{}"'.format(manifest_filepath))
+        return True
 
     def _get_manifest(self, component='main', path=None):  # type: (str, str | None) -> Tuple[str, bool]
-
-        if component != 'main' and path is not None:
-            raise FatalError('Cannot determine manifest directory. Please specify either component or path.')
-
         manifest_dir = self._get_manifest_dir(component=component, path=path)
-        self._check_manifest_dir(manifest_dir)
-        
         manifest_filepath = os.path.join(manifest_dir, MANIFEST_FILENAME)
-        created = False
         # Create manifest file if it doesn't exist in work directory
-        if not os.path.exists(manifest_filepath):
-            example_path = os.path.join(
-                os.path.dirname(os.path.realpath(__file__)), 'templates', 'idf_component_template.yml')
-            create_directory(manifest_dir)
-            shutil.copyfile(example_path, manifest_filepath)
-            print_info('Created "{}"'.format(manifest_filepath))
-            created = True
-        return manifest_filepath, created
+        manifest_created = self._create_manifest_if_missing(manifest_filepath)
+        return manifest_filepath, manifest_created
 
     @general_error_handler
     def create_manifest(self, component='main', path=None):  # type: (str, str | None) -> None
@@ -183,7 +183,9 @@ class ComponentManager(object):
 
     @general_error_handler
     def add_dependency(self, dependency, component='main', path=None):  # type: (str, str, str | None) -> None
+        
         manifest_filepath, _ = self._get_manifest(component=component, path=path)
+
         if path:
             component_path = os.path.abspath(path)
             component = os.path.basename(component_path)

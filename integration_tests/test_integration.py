@@ -243,6 +243,11 @@ def test_create_manifest(project):
     path = os.path.join(project, 'main', 'idf_component.yml')
     assert 'Created "{}"'.format(path) in res
 
+@pytest.mark.parametrize('project', [{}], indirect = True)
+def test_create_manifest_with_path(project):
+    res = project_action(project, 'create-manifest --path .')
+    path = os.path.join(project, 'main', 'idf_component.yml')
+    assert 'Created "{}"'.format(path) in res
 
 @pytest.mark.parametrize(
     'project', [
